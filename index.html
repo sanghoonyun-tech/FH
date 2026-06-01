@@ -345,6 +345,7 @@
       <button data-view="dashboard" class="active">Dashboard</button>
       <button data-view="axes">Axes <span class="ct" id="navAxCt">0</span></button>
       <button data-view="hypotheses">Hypotheses <span class="ct" id="navHypCt">0</span></button>
+      <button id="navCasesBtn" onclick="gotoCases()">Cases <span class="ct" id="navCaseCt">0</span></button>
       <button data-view="evtable">Evidence <span class="ct" id="navEvCt">0</span></button>
       <button data-view="claimtable">Claim Table <span class="ct" id="navClmCt">0</span></button>
     </div>
@@ -619,6 +620,11 @@ function renderAll(){
   document.getElementById('navEvCt').textContent=S.evidence.length;
   const clmCt=document.getElementById('navClmCt'); if(clmCt) clmCt.textContent=S.claims.length;
   const axCt=document.getElementById('navAxCt'); if(axCt) axCt.textContent=S.axes.length;
+  const caseCt=document.getElementById('navCaseCt'); if(caseCt) caseCt.textContent=S.evidence.filter(e=>e.evidenceRole==='case').length;
+  // evtable view serves BOTH the Evidence tab and the Cases tab — split highlight by mode
+  const evBtn=document.querySelector('.nav-views button[data-view="evtable"]'), casesBtn=document.getElementById('navCasesBtn');
+  if(S.ui.view==='evtable'){ if(evBtn) evBtn.classList.toggle('active', _evMode!=='case'); if(casesBtn) casesBtn.classList.toggle('active', _evMode==='case'); }
+  else if(casesBtn) casesBtn.classList.remove('active');
   if(S.ui.view==='dashboard') renderDash();
   if(S.ui.view==='axes') renderAxes();
   if(S.ui.view==='hypotheses'){ buildFilter(); const hv=S.ui.hypView||'table'; setHypView(hv); }
@@ -626,6 +632,7 @@ function renderAll(){
   if(S.ui.view==='evtable') renderEvTable();
   if(S.ui.view==='claimtable') renderClmTable();
 }
+function gotoCases(){ S.ui.view='evtable'; applyPreset('cases'); persist(); renderAll(); }
 
 /* ===== DASHBOARD ===== */
 function renderDash(){
@@ -1673,41 +1680,52 @@ function renderUCView(list){
   return h;
 }
 
-const CASE_COLS=[
-  ['title','Case'],['region','Region'],['kr','KR/Asian'],['studentBg','Background'],
-  ['resultSchool','Result'],['schoolGroup','Group'],['major','Major'],
-  ['academicSignal','Academic'],['activitySignal','Activity'],['narrativeSignal','Narrative'],
-  ['verificationStatus','Verif'],['axis','Axis']
-];
+function caseRow(label,val){ return val?`<div style="display:flex;gap:8px;font-size:12px;line-height:1.45;margin-top:2px;"><span class="dim" style="min-width:62px;flex-shrink:0;">${label}</span><span style="color:var(--ink-2);">${esc(val)}</span></div>`:''; }
 function renderCaseTable(list){
   const cases=list.filter(e=>e.evidenceRole==='case');
-  const info=`<div style="border:1px solid var(--line);border-radius:8px;padding:11px 13px;margin-bottom:12px;background:var(--card-2);">
-    <div style="font-size:12.5px;color:var(--ink-2);line-height:1.55;"><b>학생 사례 DB</b> — 일반 근거가 아니라, 미국 거주 한인·아시안 학생의 실제 outcome case를 모아 <b>지역·학교군·전공·신호 유형별 반복 패턴</b>을 보는 화면입니다. 핵심 컬럼만 표시하고, 행 클릭 → 상세 drawer에서 Facts / Interpretation / Source / Strategy / 가설 연결을 봅니다.</div>
-    ${cases.length<12?`<div style="font-size:11.5px;color:var(--amber);margin-top:7px;">⚠ 아직 사례 데이터가 충분히 입력되지 않아 빈칸(—)이 많습니다. 사례 조사 후 Region · Result · Major · Academic/Activity/Narrative Signal을 채우면 이 화면이 작동합니다. (현재 ${cases.length}건 · 목표 15~30건)</div>`:''}
+  const info=`<div style="border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-bottom:14px;background:var(--card-2);">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+      <div style="font-size:12.5px;color:var(--ink-2);line-height:1.55;flex:1;min-width:240px;"><b>학생 사례 DB</b> — 미국 거주 한인·아시안 학생의 실제 outcome case를 모아 <b>지역·학교군·전공·신호 유형별 반복 패턴</b>을 보는 화면. 카드 클릭 → 상세 drawer(Facts / Interpretation / Source / 가설 연결).</div>
+      <button class="ghost-add" onclick="openCaseAdd()" style="white-space:nowrap;">+ Add Case</button>
+    </div>
+    ${cases.length<12?`<div style="font-size:11.5px;color:var(--amber);margin-top:9px;line-height:1.6;border-top:1px dashed var(--line);padding-top:9px;">⚠ 아직 사례가 충분치 않습니다 (현재 ${cases.length}건 · 목표 15~30건). 조부곤 요청 기준으로 수집:<br>· West: Stanford / UC / USC / Caltech &nbsp; · East: Ivy / MIT / Duke<br>· Korean/Asian은 <b>명시(explicit)와 추정(inferred) 구분</b> &nbsp; · Fact와 Interpretation 분리</div>`:''}
   </div>`;
-  if(!cases.length) return info+'<div class="dim" style="padding:20px;">case role 근거 없음. Add Evidence에서 Role=Case로 추가하거나, 한인/아시안 사례 조사 후 입력하세요.</div>';
-  const dash='<span class="dim">—</span>'; const cell=(v)=>v?esc(v):dash;
-  let h=info+'<div class="tbl-wrap"><table class="dbtbl" style="font-size:11.5px;"><thead><tr>'+CASE_COLS.map(c=>`<th>${c[1]}</th>`).join('')+'</tr></thead><tbody>';
+  if(!cases.length) return info+'<div class="dim" style="padding:24px;text-align:center;">아직 사례가 없습니다. <b>+ Add Case</b>로 추가하거나, 조사한 사례를 입력하세요.</div>';
+  let h=info+'<div style="display:flex;flex-direction:column;gap:10px;">';
   h+=cases.map(e=>{
-    const ax=axisNamesOfEv(e.id);
-    return `<tr onclick="openEvidenceDetail('${e.id}')" style="cursor:pointer;">
-      <td class="c-title" style="max-width:160px;">${esc(e.title)}</td>
-      <td class="mono">${cell(e.region)}</td>
-      <td>${krBadge(e)}</td>
-      <td class="mono dim" style="max-width:110px;">${cell(e.studentBg)}</td>
-      <td class="mono">${cell(e.resultSchool)}</td>
-      <td class="mono">${cell(e.schoolGroup)}</td>
-      <td class="mono">${cell(e.major)}</td>
-      <td style="max-width:130px;">${cell(e.academicSignal)}</td>
-      <td style="max-width:130px;">${cell(e.activitySignal)}</td>
-      <td style="max-width:130px;">${cell(e.narrativeSignal)}</td>
-      <td>${vstatPill(e.verificationStatus)}</td>
-      <td class="mono dim" style="max-width:100px;font-size:10px;">${ax.length?esc(ax.join(', ')):dash}</td>
-    </tr>`;
+    const ax=axisNamesOfEv(e.id), hs=hypsOfEvidence(e.id);
+    const chips=[
+      e.region?`<span class="pill pl-grey" style="font-size:10px;">${esc(e.region)}</span>`:'',
+      e.resultSchool?`<span class="pill pl-accent" style="font-size:10px;">→ ${esc(e.resultSchool)}</span>`:'',
+      e.schoolGroup?`<span class="pill pl-blue" style="font-size:10px;">${esc(e.schoolGroup)}</span>`:'',
+      e.major?`<span class="pill pl-blue" style="font-size:10px;">${esc(e.major)}</span>`:'',
+      e.hsType?`<span class="pill pl-grey" style="font-size:10px;">${esc(e.hsType)}</span>`:''
+    ].filter(Boolean).join(' ');
+    const signals=[caseRow('Academic',e.academicSignal),caseRow('Activity',e.activitySignal),caseRow('Narrative',e.narrativeSignal),caseRow('Strategy',e.strategySignal),caseRow('Background',e.studentBg)].filter(Boolean).join('');
+    const fi=(e.facts||e.interpretation)?`<div style="margin-top:8px;border-top:1px dashed var(--line);padding-top:7px;">
+        ${e.facts?`<div style="font-size:11.5px;line-height:1.5;"><span style="color:var(--green);font-weight:700;">FACT </span><span style="color:var(--ink-2);">${esc(e.facts)}</span></div>`:''}
+        ${e.interpretation?`<div style="font-size:11.5px;line-height:1.5;margin-top:3px;"><span style="color:var(--amber);font-weight:700;">INTERP </span><span style="color:var(--ink-2);">${esc(e.interpretation)}</span></div>`:''}
+      </div>`:'';
+    const lbl=(typeof RELSHORT!=='undefined')?RELSHORT:{};
+    const hypLine=(ax.length||hs.length)?`<div style="margin-top:7px;font-size:10.5px;color:var(--ink-faint);">${ax.length?'축: '+esc(ax.join(', ')):''}${hs.length?(ax.length?'  ·  ':'')+'가설: '+hs.map(x=>esc((x.hyp.claim||'').slice(0,28))+'…('+(lbl[x.relation]||x.relation)+')').join(', '):''}</div>`:'';
+    const empty=!chips&&!signals&&!fi;
+    return `<div onclick="openEvidenceDetail('${e.id}')" style="cursor:pointer;border:1px solid var(--line);border-radius:9px;padding:12px 14px;background:var(--field);${empty?'opacity:.62;':''}">
+      <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;">
+        <span style="font-weight:700;font-size:13.5px;line-height:1.35;flex:1;min-width:160px;">${esc(e.title)}</span>
+        ${krBadge(e)}${vstatPill(e.verificationStatus)}${e.reliability?relPill(e.reliability):''}
+      </div>
+      ${chips?`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px;">${chips}</div>`:''}
+      ${signals?`<div style="margin-top:6px;">${signals}</div>`:''}
+      ${fi}
+      ${e.caution?`<div style="margin-top:7px;font-size:11px;color:var(--red);line-height:1.45;">⚠ ${esc(e.caution)}</div>`:''}
+      ${hypLine}
+      ${empty?'<div class="dim" style="font-size:10.5px;margin-top:5px;">아직 caseProfile 미입력 — 클릭 → 근거 편집 → Case Profile에서 채우기</div>':''}
+    </div>`;
   }).join('');
-  h+='</tbody></table></div>';
+  h+='</div>';
   return h;
 }
+function openCaseAdd(){ openEvModal(); setTimeout(()=>{ const r=document.getElementById('ev_role'); if(r){ r.value='case'; } const c=document.getElementById('ev_cat'); if(c&&!c.value){ c.value='outcome-case'; } },0); }
 const CLM_FILTERS=[
   {id:'',label:'All'},
   {id:'short',label:'조각/짧은 claim',warn:true,fn:c=>c.claimText.replace(/[.\s]/g,'').length<14},
