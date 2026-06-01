@@ -624,6 +624,7 @@ const RELIAB={ high:'high', mid:'mid', low:'low' };
 /* ===== view switching ===== */
 document.getElementById('navViews').addEventListener('click',e=>{
   const b=e.target.closest('button'); if(!b) return;
+  if(!b.dataset.view) return; // Home/Cases/Report use their own onclick — don't clobber S.ui.view
   S.ui.view=b.dataset.view; persist(); renderAll();
 });
 function renderAll(){
