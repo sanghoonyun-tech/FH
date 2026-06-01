@@ -132,7 +132,7 @@
 
   /* 분기 기준 cards */
   .axc{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:14px;}
-  .axc .ah{display:flex;align-items:baseline;gap:10px;margin-bottom:12px;}
+  .axc .ah{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
   .axc .ah .ix{flex:none;width:24px;height:24px;border-radius:7px;background:var(--accent-soft);color:var(--accent);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;}
   .axc .ah .at{font-size:16px;font-weight:700;letter-spacing:-.01em;}
   .axc .row{display:flex;gap:12px;padding:8px 0;border-top:1px solid var(--line-2);}
@@ -195,6 +195,16 @@
   .fld textarea{resize:vertical;min-height:54px;line-height:1.5;}
   textarea#bulkText{width:100%;font-family:var(--sans);font-size:12.5px;padding:9px 11px;border:1px solid var(--line);border-radius:7px;resize:vertical;color:var(--ink);background:var(--surface);}
   .mfoot{display:flex;gap:8px;padding:14px 20px;border-top:1px solid var(--line);position:sticky;bottom:0;background:var(--surface);}
+  .btn.danger{color:var(--rose);}
+  .btn.danger:hover{border-color:var(--rose);background:var(--rose-soft);}
+  .picker-q{flex:1;min-width:160px;font-size:13px;padding:8px 11px;background:var(--surface);border:1px solid var(--line);border-radius:7px;color:var(--ink);font-family:var(--sans);}
+  .picker{max-height:240px;overflow:auto;border:1px solid var(--line);border-radius:7px;background:var(--surface-2);}
+  .picker-row{display:flex;align-items:center;gap:9px;padding:7px 11px;border-bottom:1px solid var(--line-2);cursor:pointer;font-size:12.5px;}
+  .picker-row:last-child{border-bottom:0;}
+  .picker-row:hover{background:var(--surface);}
+  .picker-row input{flex:none;width:15px;height:15px;}
+  .picker-row .pr-t{flex:1;color:var(--ink);}
+  .picker-row .pr-m{flex:none;color:var(--ink-3);font-size:11px;white-space:nowrap;}
 
   .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--surface);font-size:13px;padding:10px 18px;border-radius:8px;opacity:0;pointer-events:none;transition:.2s;z-index:80;max-width:90vw;}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
@@ -214,7 +224,7 @@
       <button data-view="factors">카운셀러 요인</button>
       <button data-view="evidence">근거 자료</button>
       <button data-view="axes">분기 기준</button>
-      <button data-view="report">정리본</button>
+      <button data-view="hyps">가설</button>
     </nav>
     <div class="sp"></div>
     <span class="saved" id="saved">저장됨</span>
@@ -223,7 +233,6 @@
       <button class="admin-btn" id="adminBtn" onclick="toggleAdmin()">관리</button>
       <div class="admin-menu" id="adminMenu">
         <div class="lbl">정리 도구</div>
-        <button onclick="setView('admin-hyps')">가설 후보</button>
         <button onclick="setView('admin-claims')">근거 문장</button>
         <div class="sepl"></div>
         <div class="lbl">데이터</div>
@@ -243,8 +252,7 @@
   <div class="view" id="view-factors"></div>
   <div class="view" id="view-evidence"></div>
   <div class="view" id="view-axes"></div>
-  <div class="view" id="view-report"></div>
-  <div class="view" id="view-admin-hyps"></div>
+  <div class="view" id="view-hyps"></div>
   <div class="view" id="view-admin-claims"></div>
 </div>
 
@@ -296,8 +304,6 @@ function axesForCase(e){ const ax=new Set();
 }
 
 /* ===== labels ===== */
-const VERIF={checked:['확인','ok'],'needs-primary':['1차확인 필요','warn'],unverified:['미확인','muted']};
-function verifPill(v){ const x=VERIF[v]||['—','muted']; return `<span class="pill ${x[1]}">${x[0]}</span>`; }
 const SRCT={official:'공식',cds:'CDS','cds-secondary':'CDS(2차)',media:'언론',testimony:'후기',consultant:'컨설팅',community:'커뮤니티','analysis-note':'분석메모',study:'연구',statistic:'통계'};
 function srcTypeLabel(t){ return SRCT[t]||t||'—'; }
 const CAT={'official-policy':'공식 정책',testing:'시험 정책','academic-rigor':'학업·과목','activity-depth':'활동 깊이','essay-piq':'에세이·PIQ',major:'전공 경쟁',residency:'거주·지역',strategy:'지원 전략','outcome-case':'합격 사례',market:'시장 흐름','review-criteria':'평가 요소'};
@@ -315,8 +321,7 @@ function keySignal(e){ return e.narrativeSignal||e.activitySignal||e.academicSig
 function caseNameRaw(e){ return (e.title||'').replace(/^개별 사례 — /,'').replace(/^\[패턴\]\s*/,'').replace(/^★\s*/,''); }
 function caseName(e){ return cut(caseNameRaw(e),46); }
 function quantSummary(e){ const p=[]; if(e.gpa)p.push('GPA '+e.gpa); if(e.sat)p.push('SAT '+e.sat); if(e.act)p.push('ACT '+e.act); if(p.length)return esc(p.join(' · ')); return e.academicSignal?cut(e.academicSignal,56):'—'; }
-function cautionTagsOf(e){ const t=[]; const v=e.verificationStatus;
-  if(v==='needs-primary')t.push('원문 확인 필요'); else if(v==='unverified')t.push('미확인');
+function cautionTagsOf(e){ const t=[];
   if(caseTypeOf(e)==='control')t.push('비교군');
   if(e.sourceType==='testimony'||/자기진술|후기/.test(e.sourceName||''))t.push('자기진술');
   else if(e.sourceType==='media')t.push('매체');
@@ -342,8 +347,8 @@ function render(){ const v=S.ui.view;
   document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
   document.getElementById('adminBtn').classList.toggle('on',v.startsWith('admin-'));
   document.querySelectorAll('.view').forEach(el=>el.classList.toggle('active',el.id==='view-'+v));
-  ({home:renderHome,cases:renderCases,factors:renderFactors,evidence:renderEvidence,axes:renderAxes,report:renderReport,
-    'admin-hyps':renderHyps,'admin-claims':renderClaims}[v]||renderHome)(); }
+  ({home:renderHome,cases:renderCases,factors:renderFactors,evidence:renderEvidence,axes:renderAxes,hyps:renderHyps,
+    'admin-claims':renderClaims}[v]||renderHome)(); }
 
 /* ===== HOME ===== */
 const TARGETS={ind:40,kor:30,west:20,east:15,factors:15};
@@ -354,7 +359,6 @@ function renderHome(){
   const kor=ind.filter(e=>(e.koreanAsianStatus||'').startsWith('explicit-korean')).length;
   const west=ind.filter(e=>(e.region||'').includes('West')).length;
   const east=ind.filter(e=>(e.region||'').includes('East')).length;
-  const need=ind.filter(e=>(e.verificationStatus||'')!=='checked').length;
   const goals=['미국 거주 한인 학생 개별 사례 수집','서부권 — Stanford / UC Berkeley / UCLA 사례 확인','동부권 — Ivy / MIT 사례 확인','카운셀러들이 반복적으로 강조하는 평가요소 정리','사례와 요인을 바탕으로 로드맵 분기 기준 정리'];
   const bar=(n,t)=>`<div class="bar"><i style="width:${Math.min(100,Math.round(n/t*100))}%"></i></div>`;
   const tile=(n,l,t)=>`<div class="stat"><div class="n">${n}</div><div class="l">${l} / ${t}</div>${bar(n,t)}</div>`;
@@ -369,7 +373,6 @@ function renderHome(){
           ${tile(west,'서부 사례',TARGETS.west)}
           ${tile(east,'동부 사례',TARGETS.east)}
           ${tile(S.factors.length,'카운셀러 요인',TARGETS.factors)}
-          <div class="stat flag"><div class="n">${need}</div><div class="l">확인 필요</div></div>
         </div>
         <div class="meta-ct">패턴 메모 ${pat.length}건은 개별 사례가 쌓인 뒤 보는 2차 정리입니다.</div>
       </div>
@@ -377,11 +380,11 @@ function renderHome(){
     <div class="card" style="margin-top:16px;"><h3>바로 할 일</h3>
       <div class="todo">
         <button class="go" onclick="openAddCase()">+ 학생 사례 추가</button>
-        <button onclick="gotoCases('needsprimary')">확인 필요 사례 보기</button>
         <button onclick="gotoCases('ucb')">서부 Stanford·UC 사례 보기</button>
         <button onclick="gotoCases('ivymit')">동부 Ivy·MIT 사례 보기</button>
         <button onclick="openAddFactor()">카운셀러 요인 추가</button>
-        <button onclick="setView('report')">정리본 확인</button>
+        <button onclick="setView('axes')">분기 기준 보기</button>
+        <button onclick="setView('hyps')">가설 보기</button>
       </div>
     </div>`;
 }
@@ -400,7 +403,6 @@ function matchCase(e,f){
     case 'stanford':return rs.includes('stanford');
     case 'ucb':return rs.includes('berkeley')||rs.includes('ucla')||rs.includes('uc berkeley');
     case 'ivymit':return rs.includes('mit')||(e.schoolGroup||'').toLowerCase().includes('ivy')||/harvard|yale|princeton|cornell|brown|columbia|dartmouth|penn|upenn/.test(rs);
-    case 'needsprimary':return (e.verificationStatus||'')!=='checked';
   } return true;
 }
 function setCaseTab(t){ caseTab=t; caseFilter='all'; renderCases(); }
@@ -409,8 +411,8 @@ function renderCases(){
   const base=S.evidence.filter(e=>e.evidenceRole==='case'&&(e.caseKind||'individual')===caseTab);
   const rows=base.filter(e=>matchCase(e,caseFilter));
   const ct=f=>base.filter(e=>matchCase(e,f)).length;
-  const chips=[['all','전체'],['west','서부권'],['east','동부권'],['korean','명시적 한인'],['asian','아시안·비교군'],['stanford','Stanford 포함'],['ucb','UC Berkeley·UCLA'],['ivymit','Ivy·MIT'],['needsprimary','원문 확인 필요']];
-  const head=['사례','지역','배경','결과','학교군','관심 분야','핵심 신호','주의 태그','확인상태'];
+  const chips=[['all','전체'],['west','서부권'],['east','동부권'],['korean','명시적 한인'],['asian','아시안·비교군'],['stanford','Stanford 포함'],['ucb','UC Berkeley·UCLA'],['ivymit','Ivy·MIT']];
+  const head=['사례','지역','배경','결과','학교군','관심 분야','핵심 신호','주의 태그'];
   const hay=e=>esc([caseNameRaw(e),e.resultSchool,e.schoolGroup,e.major,e.region,keySignal(e),bgTag(e)].join(' ').toLowerCase());
   document.getElementById('view-cases').innerHTML=`
     <div class="vh">
@@ -437,8 +439,7 @@ function renderCases(){
         <td>${cut(e.major,16)||'—'}</td>
         <td>${cut(keySignal(e),34)||'—'}</td>
         <td>${cautionTagsOf(e).slice(0,3).map(t=>`<span class="ctag">${esc(t)}</span>`).join('')||'—'}</td>
-        <td>${verifPill(e.verificationStatus)}</td>
-      </tr>`).join(''):`<tr><td colspan="9" class="empty">해당하는 사례가 없습니다.</td></tr>`}
+      </tr>`).join(''):`<tr><td colspan="8" class="empty">해당하는 사례가 없습니다.</td></tr>`}
     </tbody></table></div>
     <div class="meta-ct"><span id="caseShown">${rows.length}</span>건 표시 · ${caseTab==='individual'?'개별 사례':'패턴 메모'} 총 ${base.length}건</div>`;
   if(caseSearch){ const q=document.getElementById('caseq'); if(q)q.value=caseSearch; tblFilter(caseSearch,'caseTbody','caseShown'); }
@@ -466,8 +467,7 @@ function openCase(id){
     <div class="cell"><div class="k">배경</div><div class="v">${esc(e.koreanAsian||KA[e.koreanAsianStatus]||'—')}</div></div>
     <div class="cell"><div class="k">학교 / 학년</div><div class="v">${esc(e.hsType||'—')}</div></div>
     <div class="cell"><div class="k">관심 전공</div><div class="v">${esc(e.major||'—')}</div></div>
-    <div class="cell"><div class="k">지원 결과</div><div class="v">${cut(e.resultSchool,40)||'—'}</div></div>
-    <div class="cell"><div class="k">확인상태</div><div class="v">${verifPill(e.verificationStatus)}</div></div></div>`;
+    <div class="cell"><div class="k">지원 결과</div><div class="v">${cut(e.resultSchool,40)||'—'}</div></div></div>`;
 
   const quant=`<div class="msec">정량 요소</div>${fld('GPA',e.gpa)}${fld('SAT / ACT',[e.sat,e.act].filter(Boolean).join(' / '))}${fld('AP / IB',e.apList)}${fld('수상 / 기타',e.awards)}${fld('학업 신호',e.academicSignal)}`;
 
@@ -492,9 +492,50 @@ function openCase(id){
       +axHtml+cautionHtml+srcHtml;
   }
   openModal(`<div class="mh"><span class="mt"><span class="badge ${tb[1]}">${tb[0]}</span>${e.featured?'<span class="star">★</span>':''}${esc(caseNameRaw(e))}</span><button class="mx" onclick="closeModal()">✕</button></div>
-    <div class="mb"><div style="margin-bottom:14px;"><button class="btn sm" onclick="toggleFeatured('${e.evidenceId}')">${e.featured?'★ 대표 사례 해제':'☆ 대표 사례로 지정'}</button></div>${body}</div>`);
+    <div class="mb"><div style="margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap;"><button class="btn sm" onclick="toggleFeatured('${e.evidenceId}')">${e.featured?'★ 대표 사례 해제':'☆ 대표 사례로 지정'}</button><button class="btn sm" onclick="exportCaseMd('${e.evidenceId}')">노션 MD 내보내기</button></div>${body}</div>`);
 }
 function toggleFeatured(id){ const e=getEvidence(id); if(!e)return; e.featured=!e.featured; persist(); openCase(id); toast(e.featured?'대표 사례로 지정':'대표 사례 해제'); }
+function mdLine(k,v){ return v?`- ${k}: ${(''+v).replace(/\n+/g,' ')}`:''; }
+function exportCaseMd(id){ const e=getEvidence(id); if(!e)return; const ct=caseTypeOf(e); const tb=CTYPE[ct]||CTYPE.admit;
+  const L=[]; const P=s=>{ if(s||s==='')L.push(s); };
+  P(`# ${caseNameRaw(e)}`); P('');
+  P(`> 자료 유형: ${tb[0]} | 지역: ${e.region||'—'} | 배경: ${e.koreanAsian||KA[e.koreanAsianStatus]||'—'}`); P('');
+  P('## 한눈에 보기');
+  P(mdLine('결과', e.resultSchool||'—'));
+  P(mdLine('핵심 정량', (function(){const p=[];if(e.gpa)p.push('GPA '+e.gpa);if(e.sat)p.push('SAT '+e.sat);if(e.act)p.push('ACT '+e.act);return p.length?p.join(' · '):(e.academicSignal||'—');})()));
+  P(mdLine('핵심 정성', e.essayTheme||e.narrativeSignal||'—'));
+  P(mdLine('강한 활동 신호', e.activities||e.activitySignal||'—'));
+  P(mdLine('이 사례에서 볼 점', e.advice||e.interpretation||'—')); P('');
+  P('## 기본 정보');
+  P(mdLine('지역', e.region)); P(mdLine('배경', e.koreanAsian||KA[e.koreanAsianStatus]));
+  P(mdLine('학교 / 학년', e.hsType)); P(mdLine('관심 전공', e.major)); P(mdLine('지원 결과', e.resultSchool)); P('');
+  P('## 정량 요소');
+  P(mdLine('GPA', e.gpa)); P(mdLine('SAT / ACT', [e.sat,e.act].filter(Boolean).join(' / '))); P(mdLine('AP / IB', e.apList)); P(mdLine('수상 / 기타', e.awards)); P(mdLine('학업 신호', e.academicSignal)); P('');
+  if(ct==='control'){
+    P('## 결과'); P(mdLine('지원 결과', e.resultSchool)); P('');
+    if(e.activities||e.activitySignal){ P('## Activities'); P(e.activities||e.activitySignal); P(''); }
+    if(e.essayTheme||e.narrativeSignal){ P('## Essay'); P([e.essayTheme,e.narrativeSignal].filter(Boolean).join(' · ')); P(''); }
+    if(e.breaksConvention){ P('## 이 사례가 깨는 통념'); P('> '+e.breaksConvention); P(''); }
+    if(e.interpretation){ P('## 해석 가능성'); P(e.interpretation); P(''); }
+  } else {
+    P('## 정성 요소'); P(mdLine('배경', e.studentBg||e.koreanAsian)); P(mdLine('Essay Theme', e.essayTheme)); P(mdLine('Narrative', e.narrativeSignal)); P('');
+    if(e.activities||e.activitySignal){ P('## Activities'); P(e.activities||e.activitySignal); P(''); }
+    if(e.essayTheme||e.narrativeSignal){ P('## Essay'); P([e.essayTheme,e.narrativeSignal].filter(Boolean).join(' · ')); P(''); }
+    if(e.recommendation){ P('## Recommendation'); P(e.recommendation); P(''); }
+    if(e.advice){ P('## Advice / 배울 점'); P(e.advice); P(''); }
+    if(e.interpretation){ P('## 해석 가능성'); P(e.interpretation); P(''); }
+  }
+  const axes=axesForCase(e); if(axes.length){ P('## 연결되는 분기 기준'); axes.forEach(a=>P(`- ${a.axisName}`)); P(''); }
+  P('## 주의점'); if(e.caution)P('- '+e.caution.replace(/\n+/g,' '));
+  const ctags=cautionTagsOf(e); if(ctags.length)P('- 주의 태그: '+ctags.join(' · '));
+  P('- n=1 · 생존자 편향 · 자기/매체 해석 가능 · 합격 원인 단정 불가'); P('');
+  P('## 원문 출처'); P(mdLine('출처', e.sourceName||srcTypeLabel(e.sourceType))); if(e.url)P('- 원문: '+e.url);
+  const text=L.filter(x=>x!==undefined).join('\n');
+  const safe=caseNameRaw(e).replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,'-').slice(0,40);
+  const blob=new Blob([text],{type:'text/markdown'}); const u=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=u; a.download=`사례-${safe||'case'}.md`; a.click(); URL.revokeObjectURL(u);
+  try{navigator.clipboard.writeText(text);toast('노션 MD 다운로드 + 클립보드 복사 완료');}catch(_){toast('노션 MD 다운로드 완료');}
+}
 
 /* ===== ADD CASE ===== */
 function opt(v,l,sel){ return `<option value="${v}" ${sel?'selected':''}>${l}</option>`; }
@@ -527,7 +568,6 @@ function openAddCase(){ closeAdmin(); openModal(`
     <div class="fld"><label>원문 URL</label><input id="ac_url" placeholder="https://"></div>
     <div class="fld"><label>출처 유형</label><select id="ac_srctype">${opt('media','언론',1)}${opt('testimony','후기')}${opt('consultant','컨설팅')}${opt('community','커뮤니티')}${opt('official','공식')}${opt('study','연구')}</select></div>
     <div class="fld"><label>신뢰</label><select id="ac_rel">${opt('low','낮음',1)}${opt('mid','보통')}${opt('high','높음')}</select></div>
-    <div class="fld"><label>확인상태</label><select id="ac_verif">${opt('unverified','미확인',1)}${opt('needs-primary','1차확인 필요')}${opt('checked','확인')}</select></div>
   </div></div>
   <div class="mfoot"><button class="btn primary" onclick="saveCase()">사례 저장</button><button class="btn" onclick="closeModal()">취소</button></div>`); }
 function saveCase(){ const g=id=>(document.getElementById(id).value||'').trim();
@@ -538,7 +578,7 @@ function saveCase(){ const g=id=>(document.getElementById(id).value||'').trim();
     gpa:g('ac_gpa'),sat:g('ac_sat'),apList:g('ac_ap'),activities:g('ac_act'),essayTheme:g('ac_essay'),recommendation:g('ac_rec'),advice:g('ac_advice'),
     activitySignal:g('ac_act'),narrativeSignal:g('ac_essay'),academicSignal:[g('ac_gpa')&&('GPA '+g('ac_gpa')),g('ac_sat')&&('SAT '+g('ac_sat'))].filter(Boolean).join(' · '),
     facts:g('ac_facts'),summary:g('ac_facts'),interpretation:g('ac_interp'),breaksConvention:g('ac_breaks'),caution:g('ac_caution'),
-    sourceName:g('ac_src'),url:g('ac_url'),sourceType:g('ac_srctype')||'media',reliability:g('ac_rel')||'low',verificationStatus:g('ac_verif')||'unverified'});
+    sourceName:g('ac_src'),url:g('ac_url'),sourceType:g('ac_srctype')||'media',reliability:g('ac_rel')||'low',verificationStatus:'unverified'});
   persist(); closeModal(); caseTab=(g('ac_kind')==='pattern')?'pattern':'individual'; caseFilter='all'; caseSearch=''; S.ui.view='cases'; render(); toast('학생 사례 추가됨'); }
 
 /* ===== COUNSELOR FACTORS ===== */
@@ -598,16 +638,15 @@ function saveFactor(){ const g=id=>(document.getElementById(id).value||'').trim(
 let evSearch='', evFilter='';
 function renderEvidence(){
   let rows=S.evidence.slice();
-  if(evFilter) rows=rows.filter(e=>e.sourceType===evFilter||e.category===evFilter||e.verificationStatus===evFilter);
-  const head=['제목','유형','분류','학교군','신뢰','확인상태','출처'];
+  if(evFilter) rows=rows.filter(e=>e.sourceType===evFilter||e.category===evFilter);
+  const head=['제목','유형','분류','학교군','신뢰','출처'];
   const hay=e=>esc([e.title,e.summary,e.sourceName,e.schoolGroup,catLabel(e.category)].join(' ').toLowerCase());
   document.getElementById('view-evidence').innerHTML=`
-    <div class="vh"><div><h2>근거 자료</h2><div class="sub">학생 사례와 카운셀러 요인의 출처를 확인하는 자료 모음입니다. 필요할 때 원문·신뢰도·확인 상태를 점검합니다.</div></div></div>
+    <div class="vh"><div><h2>근거 자료</h2><div class="sub">학생 사례와 카운셀러 요인의 출처를 확인하는 자료 모음입니다. 필요할 때 원문과 신뢰도를 점검합니다.</div></div></div>
     <div class="searchrow">
       <input type="text" id="evq" placeholder="제목·요약·출처 검색" oninput="evSearch=this.value;tblFilter(evSearch,'evTbody','evShown')">
       <select onchange="evFilter=this.value;renderEvidence()">
         <option value="">전체</option>
-        <optgroup label="확인상태">${opt('checked','확인',evFilter==='checked')}${opt('needs-primary','1차확인 필요',evFilter==='needs-primary')}${opt('unverified','미확인',evFilter==='unverified')}</optgroup>
         <optgroup label="출처 유형">${Object.entries(SRCT).map(([k,v])=>opt(k,v,evFilter===k)).join('')}</optgroup>
         <optgroup label="분류">${Object.entries(CAT).map(([k,v])=>opt(k,v,evFilter===k)).join('')}</optgroup>
       </select>
@@ -619,9 +658,8 @@ function renderEvidence(){
         <td>${catLabel(e.category)}</td>
         <td>${cut(e.schoolGroup,16)||'—'}</td>
         <td>${relLabel(e.reliability)}</td>
-        <td>${verifPill(e.verificationStatus)}</td>
         <td>${cut(e.sourceName,22)||'—'}</td>
-      </tr>`).join(''):`<tr><td colspan="7" class="empty">자료가 없습니다.</td></tr>`}
+      </tr>`).join(''):`<tr><td colspan="6" class="empty">자료가 없습니다.</td></tr>`}
     </tbody></table></div>
     <div class="meta-ct"><span id="evShown">${rows.length}</span> / ${S.evidence.length}건</div>`;
   if(evSearch){ const q=document.getElementById('evq'); if(q)q.value=evSearch; tblFilter(evSearch,'evTbody','evShown'); }
@@ -637,7 +675,7 @@ function openEv(id){ const e=getEvidence(id); if(!e)return;
         <div class="cell"><div class="k">분류</div><div class="v">${catLabel(e.category)}</div></div>
         <div class="cell"><div class="k">적용 대상(학교군)</div><div class="v">${esc(e.schoolGroup||'—')}</div></div>
         <div class="cell"><div class="k">연도</div><div class="v">${esc(e.yearCycle||'—')}</div></div>
-        <div class="cell"><div class="k">신뢰 / 확인</div><div class="v">${relLabel(e.reliability)} · ${verifPill(e.verificationStatus)}</div></div>
+        <div class="cell"><div class="k">신뢰</div><div class="v">${relLabel(e.reliability)}</div></div>
       </div>
       ${facs.length?`<div class="msec">로드맵에서 쓰이는 지점</div><div class="field"><div class="v">${facs.map(f=>`· <b>${esc(f.factor)}</b> — ${esc(f.roadmapUse||'—')}`).join('<br>')}</div></div>`:''}
       ${e.caution?`<div class="msec">주의점</div><div class="field"><div class="v" style="color:var(--warn)">${esc(e.caution)}</div></div>`:''}
@@ -648,90 +686,56 @@ function openEv(id){ const e=getEvidence(id); if(!e)return;
 function renderAxes(){
   const rows=(S.axes||[]);
   document.getElementById('view-axes').innerHTML=`
-    <div class="vh"><div><h2>분기 기준</h2><div class="sub">사례·요인을 보며 로드맵이 갈리는 지점을 정리한 판단 기준입니다. 같은 학생도 이 기준에 따라 다른 로드맵이 됩니다.</div></div></div>
+    <div class="vh"><div><h2>분기 기준</h2><div class="sub">사례·요인을 보며 로드맵이 갈리는 지점을 정리한 판단 기준입니다. 같은 학생도 이 기준에 따라 다른 로드맵이 됩니다.</div></div>
+      <div class="vh-actions"><button class="btn primary sm" onclick="openAddAxis()">+ 분기 기준 추가</button></div></div>
     ${rows.map((a,i)=>`<div class="axc">
-      <div class="ah"><div class="ix">${i+1}</div><div class="at">${esc(a.axisName)}</div></div>
+      <div class="ah"><div class="ix">${i+1}</div><div class="at">${esc(a.axisName)}</div><div style="flex:1"></div><button class="btn sm danger" onclick="deleteAxis('${a.axisId}')">삭제</button></div>
       <div class="row q"><div class="k">질문</div><div class="v">${esc(a.decisionQuestion||a.oneLineDefinition||'—')}</div></div>
       <div class="row"><div class="k">왜 필요한가</div><div class="v">${esc(a.whyItMatters||'—')}</div></div>
       <div class="row"><div class="k">주로 보는 정보</div><div class="v">${esc(a.signalsLooked||'—')}</div></div>
       <div class="row"><div class="k">관련 사례</div><div class="v">${esc(a.relatedCaseNames||'—')}</div></div>
       <div class="row road"><div class="k">로드맵 적용</div><div class="v">${esc(a.roadmapApply||'—')}</div></div>
       <div class="row"><div class="k">아직 확인할 질문</div><div class="v">${esc((a.openQuestions||'').split('/')[0]||'—')}</div></div>
-    </div>`).join('')||'<div class="empty">분기 기준이 없습니다.</div>'}`;
+    </div>`).join('')||'<div class="empty">아직 분기 기준이 없습니다. “+ 분기 기준 추가”로 시작하세요.</div>'}`;
 }
+function openAddAxis(){ openModal(`
+  <div class="mh"><span class="mt">분기 기준 추가</span><button class="mx" onclick="closeModal()">✕</button></div>
+  <div class="mb"><div class="form-grid">
+    <div class="fld full"><label>이름 *</label><input id="ax_name" placeholder="예: 학교군별 게임 차이"></div>
+    <div class="fld full"><label>질문</label><textarea id="ax_q" placeholder="이 기준으로 무엇이 갈리는가?"></textarea></div>
+    <div class="fld full"><label>왜 필요한가</label><textarea id="ax_why" placeholder="이 기준이 로드맵에 왜 필요한지"></textarea></div>
+    <div class="fld full"><label>주로 보는 정보</label><input id="ax_sig" placeholder="예: 목표 학교군 · 거주 지역 · 전공 경쟁도"></div>
+    <div class="fld full"><label>관련 사례</label><input id="ax_cases" placeholder="예: 제이 김 · 이지우"></div>
+    <div class="fld full"><label>로드맵 적용</label><textarea id="ax_road" placeholder="이 기준을 로드맵에 어떻게 반영하는가"></textarea></div>
+    <div class="fld full"><label>아직 확인할 질문</label><textarea id="ax_open" placeholder="아직 확인이 필요한 질문"></textarea></div>
+  </div></div>
+  <div class="mfoot"><button class="btn primary" onclick="saveAxis()">분기 기준 저장</button><button class="btn" onclick="closeModal()">취소</button></div>`); }
+function saveAxis(){ const g=id=>(document.getElementById(id).value||'').trim(); const nm=g('ax_name'); if(!nm){toast('이름을 입력하세요');return;}
+  S.axes.push({axisId:uid('ax-'),axisName:nm,oneLineDefinition:'',decisionQuestion:g('ax_q'),whyItMatters:g('ax_why'),activatedWhen:'',openQuestions:g('ax_open'),signalsLooked:g('ax_sig'),relatedCaseNames:g('ax_cases'),roadmapApply:g('ax_road')});
+  persist(); closeModal(); S.ui.view='axes'; render(); toast('분기 기준 추가됨'); }
+function deleteAxis(id){ const a=axisById(id); if(!a)return; if(!confirm(`'${a.axisName}' 분기 기준을 삭제할까요? 되돌릴 수 없습니다.`))return; S.axes=S.axes.filter(x=>x.axisId!==id); persist(); render(); toast('분기 기준 삭제됨'); }
 
-/* ===== REPORT (정리본) ===== */
-function repLine(e){ return `${regionLabel(e)} ${bgTag(e)} · ${cut(e.resultSchool||e.schoolGroup,38)} · ${cut(e.essayTheme||keySignal(e),32)}`; }
-function reportData(){
-  const cases=S.evidence.filter(e=>e.evidenceRole==='case');
-  const ind=cases.filter(e=>(e.caseKind||'individual')==='individual');
-  const featured=cases.filter(e=>e.featured);
-  const control=cases.filter(e=>caseTypeOf(e)==='control');
-  const kor=ind.filter(e=>(e.koreanAsianStatus||'').startsWith('explicit-korean'));
-  const west=ind.filter(e=>(e.region||'').includes('West'));
-  const east=ind.filter(e=>(e.region||'').includes('East'));
-  const vc={checked:0,'needs-primary':0,unverified:0}; ind.forEach(e=>{const v=e.verificationStatus||'unverified';vc[v]=(vc[v]||0)+1;});
-  const open=(S.axes||[]).map(a=>a.openQuestions).filter(Boolean);
-  return {ind,featured,control,kor,west,east,vc,open};
-}
-function renderReport(){
-  const d=reportData();
-  document.getElementById('view-report').innerHTML=`
-    <div class="vh"><div><h2>정리본</h2><div class="sub">팀 공유용 문서. 현황 → 대표 사례 → 대조군 → 요인 → 분기 기준 → 다음 질문.</div></div>
-      <button class="btn primary" onclick="exportReportMd()">팀 공유용 정리 내보내기</button></div>
-
-    <div class="rep-sec"><h3>1. 이번 주 수집 현황</h3>
-      <div class="rep-grid">
-        <div class="stat"><div class="n">${d.ind.length}</div><div class="l">개별 사례</div></div>
-        <div class="stat"><div class="n">${d.kor.length}</div><div class="l">명시적 한인</div></div>
-        <div class="stat"><div class="n">${d.west.length}</div><div class="l">서부</div></div>
-        <div class="stat"><div class="n">${d.east.length}</div><div class="l">동부</div></div>
-        <div class="stat"><div class="n">${d.control.length}</div><div class="l">대조군</div></div>
-        <div class="stat"><div class="n">${S.factors.length}</div><div class="l">카운셀러 요인</div></div>
-      </div>
-      <div class="meta-ct">확인 완료 ${d.vc.checked} · 원문 확인 필요 ${d.vc['needs-primary']} · 미확인 ${d.vc.unverified}</div></div>
-
-    <div class="rep-sec"><h3>2. 대표 사례 ${d.featured.length}개</h3>
-      ${d.featured.length?d.featured.map((e,i)=>`<div class="feat"><div class="num">${i+1}</div><div><div class="ft">${caseName(e)}</div><div class="fd">${esc(repLine(e))}</div></div></div>`).join('')
-        :'<div class="desc">사례 상세에서 “대표 사례로 지정”을 누르면 여기에 표시됩니다.</div>'}</div>
-
-    <div class="rep-sec"><h3>3. 대조군에서 보이는 점</h3><div class="desc">통념을 깨는 사례 — 단정이 아니라 “이렇게만 보면 위험하다”는 신호</div>
-      ${d.control.filter(e=>e.breaksConvention).map(e=>`<div class="brk"><b>${caseName(e)}</b> ${esc(e.breaksConvention)}</div>`).join('')||'<div class="desc">—</div>'}</div>
-
-    <div class="rep-sec"><h3>4. 카운셀러 요인 ${Math.min(5,S.factors.length)}개</h3><div class="desc">로드맵에서 쓰이는 지점과 함께</div>
-      ${(S.factors||[]).slice(0,5).map(f=>`<div class="rep-li"><span><b>${esc(f.factor)}</b></span><span class="r">${cut(f.roadmapUse,38)}</span></div>`).join('')}</div>
-
-    <div class="rep-sec"><h3>5. 현재 보이는 분기 기준 ${(S.axes||[]).length}개</h3>
-      ${(S.axes||[]).map((a,i)=>`<div class="rep-li"><span>${i+1}. <b>${esc(a.axisName)}</b></span><span class="r">${cut(a.decisionQuestion,42)}</span></div>`).join('')}</div>
-
-    <div class="rep-sec"><h3>6. 다음 확인 질문</h3>
-      <ul class="ql">${d.open.map(q=>`<li>${esc(q.split('/')[0])}</li>`).join('')}</ul></div>`;
-}
-function exportReportMd(){
-  const d=reportData(); const L=[];
-  L.push('# 미국 입시 사례·근거 정리 — 정리본','',`작성일: ${new Date().toISOString().slice(0,10)}`,'');
-  L.push('## 1. 이번 주 수집 현황',`- 개별 사례 ${d.ind.length} · 명시적 한인 ${d.kor.length} · 서부 ${d.west.length} · 동부 ${d.east.length} · 대조군 ${d.control.length} · 카운셀러 요인 ${S.factors.length}`,`- 확인 완료 ${d.vc.checked} / 원문 확인 필요 ${d.vc['needs-primary']} / 미확인 ${d.vc.unverified}`,'');
-  L.push('## 2. 대표 사례'); d.featured.forEach((e,i)=>L.push(`${i+1}. ${caseNameRaw(e)} — ${repLine(e).replace(/\s+·\s+/g,' · ')}`));
-  L.push('','## 3. 대조군에서 보이는 점'); d.control.filter(e=>e.breaksConvention).forEach(e=>L.push(`- ${caseNameRaw(e)}: ${(e.breaksConvention||'').slice(0,140)}`));
-  L.push('','## 4. 카운셀러 요인 (로드맵 적용 지점)'); (S.factors||[]).slice(0,5).forEach(f=>L.push(`- **${f.factor}** — ${f.roadmapUse||''}`));
-  L.push('','## 5. 현재 보이는 분기 기준'); (S.axes||[]).forEach((a,i)=>L.push(`${i+1}. ${a.axisName} — ${a.decisionQuestion||''}`));
-  L.push('','## 6. 다음 확인 질문'); d.open.forEach(q=>L.push(`- ${q.split('/')[0].trim()}`));
-  const blob=new Blob([L.join('\n')],{type:'text/markdown'}); const u=URL.createObjectURL(blob);
-  const a=document.createElement('a'); a.href=u; a.download='팀공유-정리본.md'; a.click(); URL.revokeObjectURL(u);
-  try{navigator.clipboard.writeText(L.join('\n'));toast('정리본 .md 다운로드 + 클립보드 복사 완료');}catch(e){toast('정리본 .md 다운로드 완료');}
-}
-
-/* ===== ADMIN: 가설 후보 / 근거 문장 ===== */
+/* ===== 가설 (top-level) + 근거 문장 ===== */
 function adminCrumb(name){ return `<div class="crumb"><a onclick="setView('home')">홈</a> › 관리 › ${name}</div>`; }
 const HSTAT={observation:'관찰',weak:'약함',needs:'근거 필요',broad:'범위 넓음',revised:'수정됨',working:'적용 후보',rejected:'기각'};
-function renderHyps(){ document.getElementById('view-admin-hyps').innerHTML=`
-  ${adminCrumb('가설 후보')}
-  <div class="vh"><div><h2>가설 후보</h2><div class="sub">분기 기준에서 검증할 가설입니다.</div></div></div>
-  <div class="tbl-wrap"><table class="t"><thead><tr><th>가설</th><th>적용 범위</th><th>상태</th><th>반증 조건</th></tr></thead><tbody>
-    ${(S.hypotheses||[]).map(h=>`<tr onclick="openHyp('${h.id}')"><td><span class="nm">${cut(h.claim,70)}</span></td><td>${cut(h.scope,24)||'—'}</td><td>${HSTAT[h.status]||h.status||'—'}</td><td>${cut(h.falsifier,40)||'—'}</td></tr>`).join('')||`<tr><td colspan="4" class="empty">없음</td></tr>`}
-  </tbody></table></div>`; }
-function openHyp(id){ const h=(S.hypotheses||[]).find(x=>x.id===id); if(!h)return; openModal(`
-  <div class="mh"><span class="mt">가설 후보</span><button class="mx" onclick="closeModal()">✕</button></div>
+function hypEvidence(h){ return (h.evidenceIds||[]).map(getEvidence).filter(Boolean); }
+function renderHyps(){ const rows=(S.hypotheses||[]);
+  document.getElementById('view-hyps').innerHTML=`
+  <div class="vh"><div><h2>가설</h2><div class="sub">분기 기준에서 검증할 가설입니다. 각 가설은 관련 근거와 반증 조건을 함께 둡니다.</div></div>
+    <div class="vh-actions"><button class="btn primary sm" onclick="openAddHyp()">+ 가설 추가</button></div></div>
+  <div class="tbl-wrap"><table class="t"><thead><tr><th>가설</th><th>적용 범위</th><th>상태</th><th>근거</th><th>반증 조건</th><th></th></tr></thead><tbody>
+    ${rows.length?rows.map(h=>`<tr>
+      <td onclick="openHyp('${h.id}')"><span class="nm">${cut(h.claim,62)}</span></td>
+      <td onclick="openHyp('${h.id}')">${cut(h.scope,20)||'—'}</td>
+      <td onclick="openHyp('${h.id}')">${HSTAT[h.status]||h.status||'—'}</td>
+      <td onclick="openHyp('${h.id}')">${(h.evidenceIds||[]).length?((h.evidenceIds||[]).length+'건'):'—'}</td>
+      <td onclick="openHyp('${h.id}')">${cut(h.falsifier,32)||'—'}</td>
+      <td><button class="btn sm danger" onclick="deleteHyp('${h.id}')">삭제</button></td>
+    </tr>`).join(''):`<tr><td colspan="6" class="empty">아직 가설이 없습니다. “+ 가설 추가”로 시작하세요.</td></tr>`}
+  </tbody></table></div>
+  <div class="meta-ct">${rows.length}개 가설 · 행을 누르면 상세, 입력 시 관련 근거를 연결할 수 있습니다.</div>`; }
+function openHyp(id){ const h=(S.hypotheses||[]).find(x=>x.id===id); if(!h)return; const rel=hypEvidence(h); openModal(`
+  <div class="mh"><span class="mt">가설</span><button class="mx" onclick="closeModal()">✕</button></div>
   <div class="mb">
     <div class="field"><div class="k">가설</div><div class="v">${esc(h.claim||'—')}</div></div>
     ${h.termDef?`<div class="field"><div class="k">용어 정의</div><div class="v">${esc(h.termDef)}</div></div>`:''}
@@ -742,7 +746,46 @@ function openHyp(id){ const h=(S.hypotheses||[]).find(x=>x.id===id); if(!h)retur
     </div>
     ${h.falsifier?`<div class="field"><div class="k">반증 조건</div><div class="v">${esc(h.falsifier)}</div></div>`:''}
     ${h.ruleCandidate?`<div class="field"><div class="k">적용 규칙 초안</div><div class="v">${esc(h.ruleCandidate)}</div></div>`:''}
-  </div>`); }
+    ${rel.length?`<div class="msec">관련 근거 (${rel.length})</div><div class="field"><div class="v">${rel.map(e=>`<div style="padding:3px 0;">· <a onclick="${e.evidenceRole==='case'?'openCase':'openEv'}('${e.evidenceId}')" style="cursor:pointer;color:var(--accent)">${cut(e.title,56)}</a></div>`).join('')}</div></div>`:''}
+  </div>
+  <div class="mfoot"><button class="btn danger" onclick="deleteHyp('${h.id}')">삭제</button><button class="btn" onclick="closeModal()">닫기</button></div>`); }
+function deleteHyp(id){ const h=(S.hypotheses||[]).find(x=>x.id===id); if(!h)return; if(!confirm('이 가설을 삭제할까요? 되돌릴 수 없습니다.'))return; S.hypotheses=S.hypotheses.filter(x=>x.id!==id); persist(); closeModal(); render(); toast('가설 삭제됨'); }
+let hypPick=new Set();
+function openAddHyp(){ hypPick=new Set(); openModal(`
+  <div class="mh"><span class="mt">가설 추가</span><button class="mx" onclick="closeModal()">✕</button></div>
+  <div class="mb"><div class="form-grid">
+    <div class="fld full"><label>가설 문장 *</label><textarea id="hy_claim" placeholder="예: 사립 최상위는 활동 개수보다 한 분야 몰입의 깊이가 합격을 가른다."></textarea></div>
+    <div class="fld full"><label>용어 정의</label><textarea id="hy_def" placeholder="핵심 용어를 좁혀 정의"></textarea></div>
+    <div class="fld"><label>적용 범위</label><input id="hy_scope" placeholder="예: 사립 최상위 한정"></div>
+    <div class="fld"><label>상태</label><select id="hy_status">${Object.entries(HSTAT).map(([k,v])=>opt(k,v,k==='observation')).join('')}</select></div>
+    <div class="fld full"><label>연결 분기 기준</label><select id="hy_axis"><option value="">선택 안 함</option>${(S.axes||[]).map(a=>opt(a.axisId,a.axisName)).join('')}</select></div>
+    <div class="fld full"><label>반증 조건</label><textarea id="hy_fals" placeholder="이런 사례가 다수면 가설 약화"></textarea></div>
+  </div>
+  <div class="msec">관련 근거 연결 <span style="font-weight:500;color:var(--ink-3);font-size:11px;">— 가설을 뒷받침/반증할 자료를 골라 두세요</span></div>
+  <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+    <input type="text" id="hyq" class="picker-q" placeholder="근거 검색 (제목·요약)" oninput="filterHypEv(this.value)">
+    <button class="btn sm" onclick="suggestHypEv()">가설 문장으로 추천</button>
+  </div>
+  <div class="picker" id="hyEvList">${hypEvRows('')}</div>
+  </div>
+  <div class="mfoot"><button class="btn primary" onclick="saveHyp()">가설 저장</button><button class="btn" onclick="closeModal()">취소</button></div>`); }
+function hypEvRow(e,meta){ return `<label class="picker-row"><input type="checkbox" ${hypPick.has(e.evidenceId)?'checked':''} onchange="toggleHypEv('${e.evidenceId}',this.checked)"><span class="pr-t">${cut(e.title,56)}</span><span class="pr-m">${meta||(e.evidenceRole==='case'?'사례':srcTypeLabel(e.sourceType))+' · '+relLabel(e.reliability)}</span></label>`; }
+function hypEvRows(q){ q=(q||'').toLowerCase().trim();
+  const rows=S.evidence.filter(e=>{ if(!q)return true; return ((e.title||'')+' '+(e.summary||'')+' '+(e.facts||'')+' '+(e.sourceName||'')).toLowerCase().includes(q); }).slice(0,60);
+  return rows.length?rows.map(e=>hypEvRow(e)).join(''):'<div class="empty" style="padding:18px;">검색 결과가 없습니다.</div>'; }
+function filterHypEv(q){ const el=document.getElementById('hyEvList'); if(el)el.innerHTML=hypEvRows(q); }
+function toggleHypEv(id,on){ if(on)hypPick.add(id); else hypPick.delete(id); }
+function suggestHypEv(){ const c=(document.getElementById('hy_claim').value||''); const stop=new Set(['그리고','하지만','때문','가설','학생','경우','보다','이라','이라기','가능성','these','that','this','with','from','than','more','some']);
+  const kw=(c.toLowerCase().match(/[a-z]{4,}|[가-힣]{2,}/g)||[]).filter(t=>!stop.has(t));
+  const el=document.getElementById('hyEvList'); if(!el)return;
+  if(!kw.length){ toast('가설 문장을 먼저 입력하세요'); return; }
+  const scored=S.evidence.map(e=>{const b=((e.title||'')+' '+(e.summary||'')+' '+(e.facts||'')).toLowerCase(); let s=0; kw.forEach(t=>{if(b.includes(t))s++;}); return {e,s};}).filter(x=>x.s>0).sort((a,b)=>b.s-a.s).slice(0,40);
+  if(!scored.length){ el.innerHTML='<div class="empty" style="padding:18px;">가설 문장과 겹치는 자료를 찾지 못했습니다. 직접 검색해 보세요.</div>'; return; }
+  el.innerHTML=scored.map(({e,s})=>hypEvRow(e,(e.evidenceRole==='case'?'사례':srcTypeLabel(e.sourceType))+' · 일치 '+s)).join('');
+  toast(scored.length+'건 추천 (일치도순)'); }
+function saveHyp(){ const g=id=>(document.getElementById(id).value||'').trim(); const claim=g('hy_claim'); if(!claim){toast('가설 문장을 입력하세요');return;}
+  S.hypotheses.push({id:uid('h-'),claim,termDef:g('hy_def'),scope:g('hy_scope'),falsifier:g('hy_fals'),ruleCandidate:'',status:g('hy_status')||'observation',tags:[],history:[{t:Date.now(),note:'추가됨'}],comparisons:[],axisId:g('hy_axis'),evidenceIds:[...hypPick]});
+  persist(); closeModal(); S.ui.view='hyps'; render(); toast('가설 추가됨'); }
 let clmSearch='';
 function renderClaims(){ const rows=S.claims.slice(0,400);
   const hay=c=>{const e=getEvidence(c.evidenceId);return esc(((c.claimText||'')+' '+(e?e.title:'')).toLowerCase());};
