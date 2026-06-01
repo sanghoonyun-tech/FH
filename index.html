@@ -448,30 +448,44 @@ function renderCases(){
 /* ===== Notion-style case detail ===== */
 function fld(k,v){ return v?`<div class="field"><div class="k">${k}</div><div class="v">${esc(v)}</div></div>`:''; }
 function openCase(id){
-  const e=getEvidence(id); if(!e)return; const ct=caseTypeOf(e); const tb=CTYPE[ct]||CTYPE.admit;
+  const e=getEvidence(id); if(!e)return; const isPattern=e.caseKind==='pattern'; const ct=caseTypeOf(e);
+  const tb=isPattern?['패턴 메모','policy']:(CTYPE[ct]||CTYPE.admit);
   const axes=axesForCase(e);
   const axHtml=axes.length?`<div class="field"><div class="k">연결되는 분기 기준</div><div class="v">${axes.map(a=>`<span class="tag" style="cursor:pointer" onclick="closeModal();setView('axes')">${esc(a.axisName)}</span>`).join(' ')}</div></div>`:'';
   const srcHtml=`<div class="msec">원문 출처</div>${fld('출처', (e.sourceName||srcTypeLabel(e.sourceType)))}${e.url?`<div class="field"><div class="v"><a href="${esc(e.url)}" target="_blank" rel="noopener">원문 열기 ↗</a></div></div>`:''}`;
   const ctags=cautionTagsOf(e);
-  const cautionHtml=`<div class="msec">주의점</div>${e.caution?`<div class="field"><div class="v" style="color:var(--warn)">${esc(e.caution)}</div></div>`:''}${ctags.length?`<div class="field"><div class="v">${ctags.map(t=>`<span class="ctag">${esc(t)}</span>`).join('')}</div></div>`:''}<div class="field"><div class="v" style="color:var(--ink-3);font-size:12px;">n=1 · 생존자 편향 · 자기/매체 해석 가능 · 합격 원인 단정 불가</div></div>`;
+  const boiler=isPattern?'집계·2차 정리 — 개별 사례로 단정 금지 · 출처 직접 확인 권장':'n=1 · 생존자 편향 · 자기/매체 해석 가능 · 합격 원인 단정 불가';
+  const cautionHtml=`<div class="msec">주의점</div>${e.caution?`<div class="field"><div class="v" style="color:var(--warn)">${esc(e.caution)}</div></div>`:''}${ctags.length?`<div class="field"><div class="v">${ctags.map(t=>`<span class="ctag">${esc(t)}</span>`).join('')}</div></div>`:''}<div class="field"><div class="v" style="color:var(--ink-3);font-size:12px;">${boiler}</div></div>`;
 
+  let body;
+  if(isPattern){
+    const psum=`<div class="kbox"><div class="kt">한눈에 보기</div>
+      <div class="kl"><b>핵심 내용</b><span>${esc(e.summary||e.facts||'—')}</span></div>
+      ${e.schoolGroup?`<div class="kl"><b>학교군</b><span>${esc(e.schoolGroup)}</span></div>`:''}
+      ${(e.region||e.major)?`<div class="kl"><b>적용 맥락</b><span>${esc([e.region,e.major].filter(Boolean).join(' · '))}</span></div>`:''}
+      ${e.yearCycle?`<div class="kl"><b>시점</b><span>${esc(e.yearCycle)}</span></div>`:''}</div>`;
+    const sigs=[['학업/정량 신호',e.academicSignal],['활동 신호',e.activitySignal],['에세이/정성 신호',e.narrativeSignal],['전략 신호',e.strategySignal]].filter(x=>x[1]);
+    body=psum
+      +(e.facts&&e.facts!==e.summary?`<div class="msec">세부 내용</div>${fld('관찰된 사실',e.facts)}`:'')
+      +(sigs.length?`<div class="msec">신호 정리</div>`+sigs.map(s=>fld(s[0],s[1])).join(''):'')
+      +(e.interpretation?`<div class="msec">해석 가능성</div>${fld('가능한 패턴',e.interpretation)}`:'')
+      +(e.breaksConvention?`<div class="msec">이 사례가 깨는 통념</div><div class="brk"><b>통념 반증</b> ${esc(e.breaksConvention)}</div>`:'')
+      +(e.quote?`<div class="msec">인용</div>${fld('원문 인용','“'+e.quote+'”')}`:'')
+      +axHtml+cautionHtml+srcHtml;
+  } else {
   const summary=`<div class="kbox"><div class="kt">한눈에 보기</div>
     <div class="kl"><b>결과</b><span>${esc(e.resultSchool||'—')}</span></div>
     <div class="kl"><b>핵심 정량</b><span>${quantSummary(e)}</span></div>
     <div class="kl"><b>핵심 정성</b><span>${esc(e.essayTheme||e.narrativeSignal||'—')}</span></div>
     <div class="kl"><b>강한 활동 신호</b><span>${esc(e.activities||e.activitySignal||'—')}</span></div>
     <div class="kl"><b>이 사례에서 볼 점</b><span>${esc(e.advice||e.interpretation||'—')}</span></div></div>`;
-
   const basic=`<div class="msec">기본 정보</div><div class="kv" style="margin-bottom:6px;">
     <div class="cell"><div class="k">지역</div><div class="v">${esc(e.region||'—')}</div></div>
     <div class="cell"><div class="k">배경</div><div class="v">${esc(e.koreanAsian||KA[e.koreanAsianStatus]||'—')}</div></div>
     <div class="cell"><div class="k">학교 / 학년</div><div class="v">${esc(e.hsType||'—')}</div></div>
     <div class="cell"><div class="k">관심 전공</div><div class="v">${esc(e.major||'—')}</div></div>
     <div class="cell"><div class="k">지원 결과</div><div class="v">${cut(e.resultSchool,40)||'—'}</div></div></div>`;
-
   const quant=`<div class="msec">정량 요소</div>${fld('GPA',e.gpa)}${fld('SAT / ACT',[e.sat,e.act].filter(Boolean).join(' / '))}${fld('AP / IB',e.apList)}${fld('수상 / 기타',e.awards)}${fld('학업 신호',e.academicSignal)}`;
-
-  let body;
   if(ct==='control'){
     body=summary+basic+quant
       +(`<div class="msec">결과</div>${fld('지원 결과',e.resultSchool)}`)
@@ -491,14 +505,33 @@ function openCase(id){
       +(e.interpretation?`<div class="msec">해석 가능성</div>${fld('가능한 패턴',e.interpretation)}`:'')
       +axHtml+cautionHtml+srcHtml;
   }
+  }
   openModal(`<div class="mh"><span class="mt"><span class="badge ${tb[1]}">${tb[0]}</span>${e.featured?'<span class="star">★</span>':''}${esc(caseNameRaw(e))}</span><button class="mx" onclick="closeModal()">✕</button></div>
     <div class="mb"><div style="margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap;"><button class="btn sm" onclick="toggleFeatured('${e.evidenceId}')">${e.featured?'★ 대표 사례 해제':'☆ 대표 사례로 지정'}</button><button class="btn sm" onclick="exportCaseMd('${e.evidenceId}')">노션 MD 내보내기</button></div>${body}</div>`);
 }
 function toggleFeatured(id){ const e=getEvidence(id); if(!e)return; e.featured=!e.featured; persist(); openCase(id); toast(e.featured?'대표 사례로 지정':'대표 사례 해제'); }
 function mdLine(k,v){ return v?`- ${k}: ${(''+v).replace(/\n+/g,' ')}`:''; }
-function exportCaseMd(id){ const e=getEvidence(id); if(!e)return; const ct=caseTypeOf(e); const tb=CTYPE[ct]||CTYPE.admit;
+function exportCaseMd(id){ const e=getEvidence(id); if(!e)return; const isPattern=e.caseKind==='pattern'; const ct=caseTypeOf(e); const tb=isPattern?['패턴 메모']:(CTYPE[ct]||CTYPE.admit);
   const L=[]; const P=s=>{ if(s||s==='')L.push(s); };
   P(`# ${caseNameRaw(e)}`); P('');
+  if(isPattern){
+    P(`> 자료 유형: 패턴 메모${e.schoolGroup?' | 학교군: '+e.schoolGroup:''}${e.yearCycle?' | 시점: '+e.yearCycle:''}`); P('');
+    P('## 한눈에 보기'); P(mdLine('핵심 내용', e.summary||e.facts||'—'));
+    P(mdLine('학교군', e.schoolGroup)); P(mdLine('적용 맥락', [e.region,e.major].filter(Boolean).join(' · '))); P('');
+    if(e.facts&&e.facts!==e.summary){ P('## 세부 내용'); P(e.facts); P(''); }
+    const sigs=[['학업/정량 신호',e.academicSignal],['활동 신호',e.activitySignal],['에세이/정성 신호',e.narrativeSignal],['전략 신호',e.strategySignal]].filter(x=>x[1]);
+    if(sigs.length){ P('## 신호 정리'); sigs.forEach(s=>P(mdLine(s[0],s[1]))); P(''); }
+    if(e.interpretation){ P('## 해석 가능성'); P(e.interpretation); P(''); }
+    if(e.breaksConvention){ P('## 이 사례가 깨는 통념'); P('> '+e.breaksConvention); P(''); }
+    if(e.quote){ P('## 인용'); P('> '+e.quote); P(''); }
+    const axesP=axesForCase(e); if(axesP.length){ P('## 연결되는 분기 기준'); axesP.forEach(a=>P(`- ${a.axisName}`)); P(''); }
+    P('## 주의점'); if(e.caution)P('- '+e.caution.replace(/\n+/g,' ')); P('- 집계·2차 정리 — 개별 사례로 단정 금지 · 출처 직접 확인 권장'); P('');
+    P('## 원문 출처'); P(mdLine('출처', e.sourceName||srcTypeLabel(e.sourceType))); if(e.url)P('- 원문: '+e.url);
+    const t0=L.filter(x=>x!==undefined).join('\n'); const s0=caseNameRaw(e).replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,'-').slice(0,40);
+    const b0=new Blob([t0],{type:'text/markdown'}); const u0=URL.createObjectURL(b0); const a0=document.createElement('a'); a0.href=u0; a0.download=`패턴-${s0||'memo'}.md`; a0.click(); URL.revokeObjectURL(u0);
+    try{navigator.clipboard.writeText(t0);toast('노션 MD 다운로드 + 클립보드 복사 완료');}catch(_){toast('노션 MD 다운로드 완료');}
+    return;
+  }
   P(`> 자료 유형: ${tb[0]} | 지역: ${e.region||'—'} | 배경: ${e.koreanAsian||KA[e.koreanAsianStatus]||'—'}`); P('');
   P('## 한눈에 보기');
   P(mdLine('결과', e.resultSchool||'—'));
@@ -687,9 +720,9 @@ function renderAxes(){
   const rows=(S.axes||[]);
   document.getElementById('view-axes').innerHTML=`
     <div class="vh"><div><h2>분기 기준</h2><div class="sub">사례·요인을 보며 로드맵이 갈리는 지점을 정리한 판단 기준입니다. 같은 학생도 이 기준에 따라 다른 로드맵이 됩니다.</div></div>
-      <div class="vh-actions"><button class="btn primary sm" onclick="openAddAxis()">+ 분기 기준 추가</button></div></div>
+      <div class="vh-actions"><button class="btn primary sm" onclick="openAxisForm()">+ 분기 기준 추가</button></div></div>
     ${rows.map((a,i)=>`<div class="axc">
-      <div class="ah"><div class="ix">${i+1}</div><div class="at">${esc(a.axisName)}</div><div style="flex:1"></div><button class="btn sm danger" onclick="deleteAxis('${a.axisId}')">삭제</button></div>
+      <div class="ah"><div class="ix">${i+1}</div><div class="at">${esc(a.axisName)}</div><div style="flex:1"></div><button class="btn sm" onclick="openAxisForm('${a.axisId}')">수정</button><button class="btn sm danger" onclick="deleteAxis('${a.axisId}')">삭제</button></div>
       <div class="row q"><div class="k">질문</div><div class="v">${esc(a.decisionQuestion||a.oneLineDefinition||'—')}</div></div>
       <div class="row"><div class="k">왜 필요한가</div><div class="v">${esc(a.whyItMatters||'—')}</div></div>
       <div class="row"><div class="k">주로 보는 정보</div><div class="v">${esc(a.signalsLooked||'—')}</div></div>
@@ -698,21 +731,23 @@ function renderAxes(){
       <div class="row"><div class="k">아직 확인할 질문</div><div class="v">${esc((a.openQuestions||'').split('/')[0]||'—')}</div></div>
     </div>`).join('')||'<div class="empty">아직 분기 기준이 없습니다. “+ 분기 기준 추가”로 시작하세요.</div>'}`;
 }
-function openAddAxis(){ openModal(`
-  <div class="mh"><span class="mt">분기 기준 추가</span><button class="mx" onclick="closeModal()">✕</button></div>
+function openAxisForm(id){ const a=id?axisById(id):null; openModal(`
+  <div class="mh"><span class="mt">분기 기준 ${a?'수정':'추가'}</span><button class="mx" onclick="closeModal()">✕</button></div>
   <div class="mb"><div class="form-grid">
-    <div class="fld full"><label>이름 *</label><input id="ax_name" placeholder="예: 학교군별 게임 차이"></div>
-    <div class="fld full"><label>질문</label><textarea id="ax_q" placeholder="이 기준으로 무엇이 갈리는가?"></textarea></div>
-    <div class="fld full"><label>왜 필요한가</label><textarea id="ax_why" placeholder="이 기준이 로드맵에 왜 필요한지"></textarea></div>
-    <div class="fld full"><label>주로 보는 정보</label><input id="ax_sig" placeholder="예: 목표 학교군 · 거주 지역 · 전공 경쟁도"></div>
-    <div class="fld full"><label>관련 사례</label><input id="ax_cases" placeholder="예: 제이 김 · 이지우"></div>
-    <div class="fld full"><label>로드맵 적용</label><textarea id="ax_road" placeholder="이 기준을 로드맵에 어떻게 반영하는가"></textarea></div>
-    <div class="fld full"><label>아직 확인할 질문</label><textarea id="ax_open" placeholder="아직 확인이 필요한 질문"></textarea></div>
+    <div class="fld full"><label>이름 *</label><input id="ax_name" value="${a?esc(a.axisName||''):''}" placeholder="예: 학교군별 게임 차이"></div>
+    <div class="fld full"><label>질문</label><textarea id="ax_q" placeholder="이 기준으로 무엇이 갈리는가?">${a?esc(a.decisionQuestion||''):''}</textarea></div>
+    <div class="fld full"><label>왜 필요한가</label><textarea id="ax_why" placeholder="이 기준이 로드맵에 왜 필요한지">${a?esc(a.whyItMatters||''):''}</textarea></div>
+    <div class="fld full"><label>주로 보는 정보</label><input id="ax_sig" value="${a?esc(a.signalsLooked||''):''}" placeholder="예: 목표 학교군 · 거주 지역 · 전공 경쟁도"></div>
+    <div class="fld full"><label>관련 사례</label><input id="ax_cases" value="${a?esc(a.relatedCaseNames||''):''}" placeholder="예: 제이 김 · 이지우"></div>
+    <div class="fld full"><label>로드맵 적용</label><textarea id="ax_road" placeholder="이 기준을 로드맵에 어떻게 반영하는가">${a?esc(a.roadmapApply||''):''}</textarea></div>
+    <div class="fld full"><label>아직 확인할 질문</label><textarea id="ax_open" placeholder="아직 확인이 필요한 질문">${a?esc(a.openQuestions||''):''}</textarea></div>
   </div></div>
-  <div class="mfoot"><button class="btn primary" onclick="saveAxis()">분기 기준 저장</button><button class="btn" onclick="closeModal()">취소</button></div>`); }
-function saveAxis(){ const g=id=>(document.getElementById(id).value||'').trim(); const nm=g('ax_name'); if(!nm){toast('이름을 입력하세요');return;}
-  S.axes.push({axisId:uid('ax-'),axisName:nm,oneLineDefinition:'',decisionQuestion:g('ax_q'),whyItMatters:g('ax_why'),activatedWhen:'',openQuestions:g('ax_open'),signalsLooked:g('ax_sig'),relatedCaseNames:g('ax_cases'),roadmapApply:g('ax_road')});
-  persist(); closeModal(); S.ui.view='axes'; render(); toast('분기 기준 추가됨'); }
+  <div class="mfoot"><button class="btn primary" onclick="saveAxis('${id||''}')">${a?'수정 저장':'분기 기준 저장'}</button><button class="btn" onclick="closeModal()">취소</button></div>`); }
+function saveAxis(id){ const g=k=>(document.getElementById(k).value||'').trim(); const nm=g('ax_name'); if(!nm){toast('이름을 입력하세요');return;}
+  const f={axisName:nm,decisionQuestion:g('ax_q'),whyItMatters:g('ax_why'),signalsLooked:g('ax_sig'),relatedCaseNames:g('ax_cases'),roadmapApply:g('ax_road'),openQuestions:g('ax_open')};
+  if(id){ const a=axisById(id); if(a)Object.assign(a,f); toast('분기 기준 수정됨'); }
+  else { S.axes.push(Object.assign({axisId:uid('ax-'),oneLineDefinition:'',activatedWhen:''},f)); toast('분기 기준 추가됨'); }
+  persist(); closeModal(); S.ui.view='axes'; render(); }
 function deleteAxis(id){ const a=axisById(id); if(!a)return; if(!confirm(`'${a.axisName}' 분기 기준을 삭제할까요? 되돌릴 수 없습니다.`))return; S.axes=S.axes.filter(x=>x.axisId!==id); persist(); render(); toast('분기 기준 삭제됨'); }
 
 /* ===== 가설 (top-level) + 근거 문장 ===== */
@@ -722,7 +757,7 @@ function hypEvidence(h){ return (h.evidenceIds||[]).map(getEvidence).filter(Bool
 function renderHyps(){ const rows=(S.hypotheses||[]);
   document.getElementById('view-hyps').innerHTML=`
   <div class="vh"><div><h2>가설</h2><div class="sub">분기 기준에서 검증할 가설입니다. 각 가설은 관련 근거와 반증 조건을 함께 둡니다.</div></div>
-    <div class="vh-actions"><button class="btn primary sm" onclick="openAddHyp()">+ 가설 추가</button></div></div>
+    <div class="vh-actions"><button class="btn primary sm" onclick="openHypForm()">+ 가설 추가</button></div></div>
   <div class="tbl-wrap"><table class="t"><thead><tr><th>가설</th><th>적용 범위</th><th>상태</th><th>근거</th><th>반증 조건</th><th></th></tr></thead><tbody>
     ${rows.length?rows.map(h=>`<tr>
       <td onclick="openHyp('${h.id}')"><span class="nm">${cut(h.claim,62)}</span></td>
@@ -748,18 +783,18 @@ function openHyp(id){ const h=(S.hypotheses||[]).find(x=>x.id===id); if(!h)retur
     ${h.ruleCandidate?`<div class="field"><div class="k">적용 규칙 초안</div><div class="v">${esc(h.ruleCandidate)}</div></div>`:''}
     ${rel.length?`<div class="msec">관련 근거 (${rel.length})</div><div class="field"><div class="v">${rel.map(e=>`<div style="padding:3px 0;">· <a onclick="${e.evidenceRole==='case'?'openCase':'openEv'}('${e.evidenceId}')" style="cursor:pointer;color:var(--accent)">${cut(e.title,56)}</a></div>`).join('')}</div></div>`:''}
   </div>
-  <div class="mfoot"><button class="btn danger" onclick="deleteHyp('${h.id}')">삭제</button><button class="btn" onclick="closeModal()">닫기</button></div>`); }
+  <div class="mfoot"><button class="btn" onclick="openHypForm('${h.id}')">수정</button><button class="btn danger" onclick="deleteHyp('${h.id}')">삭제</button><button class="btn" onclick="closeModal()">닫기</button></div>`); }
 function deleteHyp(id){ const h=(S.hypotheses||[]).find(x=>x.id===id); if(!h)return; if(!confirm('이 가설을 삭제할까요? 되돌릴 수 없습니다.'))return; S.hypotheses=S.hypotheses.filter(x=>x.id!==id); persist(); closeModal(); render(); toast('가설 삭제됨'); }
 let hypPick=new Set();
-function openAddHyp(){ hypPick=new Set(); openModal(`
-  <div class="mh"><span class="mt">가설 추가</span><button class="mx" onclick="closeModal()">✕</button></div>
+function openHypForm(id){ const h=id?(S.hypotheses||[]).find(x=>x.id===id):null; hypPick=new Set(h&&h.evidenceIds?h.evidenceIds:[]); openModal(`
+  <div class="mh"><span class="mt">가설 ${h?'수정':'추가'}</span><button class="mx" onclick="closeModal()">✕</button></div>
   <div class="mb"><div class="form-grid">
-    <div class="fld full"><label>가설 문장 *</label><textarea id="hy_claim" placeholder="예: 사립 최상위는 활동 개수보다 한 분야 몰입의 깊이가 합격을 가른다."></textarea></div>
-    <div class="fld full"><label>용어 정의</label><textarea id="hy_def" placeholder="핵심 용어를 좁혀 정의"></textarea></div>
-    <div class="fld"><label>적용 범위</label><input id="hy_scope" placeholder="예: 사립 최상위 한정"></div>
-    <div class="fld"><label>상태</label><select id="hy_status">${Object.entries(HSTAT).map(([k,v])=>opt(k,v,k==='observation')).join('')}</select></div>
-    <div class="fld full"><label>연결 분기 기준</label><select id="hy_axis"><option value="">선택 안 함</option>${(S.axes||[]).map(a=>opt(a.axisId,a.axisName)).join('')}</select></div>
-    <div class="fld full"><label>반증 조건</label><textarea id="hy_fals" placeholder="이런 사례가 다수면 가설 약화"></textarea></div>
+    <div class="fld full"><label>가설 문장 *</label><textarea id="hy_claim" placeholder="예: 사립 최상위는 활동 개수보다 한 분야 몰입의 깊이가 합격을 가른다.">${h?esc(h.claim||''):''}</textarea></div>
+    <div class="fld full"><label>용어 정의</label><textarea id="hy_def" placeholder="핵심 용어를 좁혀 정의">${h?esc(h.termDef||''):''}</textarea></div>
+    <div class="fld"><label>적용 범위</label><input id="hy_scope" value="${h?esc(h.scope||''):''}" placeholder="예: 사립 최상위 한정"></div>
+    <div class="fld"><label>상태</label><select id="hy_status">${Object.entries(HSTAT).map(([k,v])=>opt(k,v,(h?h.status:'observation')===k)).join('')}</select></div>
+    <div class="fld full"><label>연결 분기 기준</label><select id="hy_axis"><option value="">선택 안 함</option>${(S.axes||[]).map(a=>opt(a.axisId,a.axisName,h&&h.axisId===a.axisId)).join('')}</select></div>
+    <div class="fld full"><label>반증 조건</label><textarea id="hy_fals" placeholder="이런 사례가 다수면 가설 약화">${h?esc(h.falsifier||''):''}</textarea></div>
   </div>
   <div class="msec">관련 근거 연결 <span style="font-weight:500;color:var(--ink-3);font-size:11px;">— 가설을 뒷받침/반증할 자료를 골라 두세요</span></div>
   <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
@@ -768,7 +803,12 @@ function openAddHyp(){ hypPick=new Set(); openModal(`
   </div>
   <div class="picker" id="hyEvList">${hypEvRows('')}</div>
   </div>
-  <div class="mfoot"><button class="btn primary" onclick="saveHyp()">가설 저장</button><button class="btn" onclick="closeModal()">취소</button></div>`); }
+  <div class="mfoot"><button class="btn primary" onclick="saveHyp('${id||''}')">${h?'수정 저장':'가설 저장'}</button><button class="btn" onclick="closeModal()">취소</button></div>`); }
+function saveHyp(id){ const g=k=>(document.getElementById(k).value||'').trim(); const claim=g('hy_claim'); if(!claim){toast('가설 문장을 입력하세요');return;}
+  const f={claim,termDef:g('hy_def'),scope:g('hy_scope'),falsifier:g('hy_fals'),status:g('hy_status')||'observation',axisId:g('hy_axis'),evidenceIds:[...hypPick]};
+  if(id){ const h=(S.hypotheses||[]).find(x=>x.id===id); if(h){ Object.assign(h,f); (h.history=h.history||[]).push({t:Date.now(),note:'수정됨'}); } toast('가설 수정됨'); }
+  else { S.hypotheses.push(Object.assign({id:uid('h-'),ruleCandidate:'',tags:[],history:[{t:Date.now(),note:'추가됨'}],comparisons:[]},f)); toast('가설 추가됨'); }
+  persist(); closeModal(); S.ui.view='hyps'; render(); }
 function hypEvRow(e,meta){ return `<label class="picker-row"><input type="checkbox" ${hypPick.has(e.evidenceId)?'checked':''} onchange="toggleHypEv('${e.evidenceId}',this.checked)"><span class="pr-t">${cut(e.title,56)}</span><span class="pr-m">${meta||(e.evidenceRole==='case'?'사례':srcTypeLabel(e.sourceType))+' · '+relLabel(e.reliability)}</span></label>`; }
 function hypEvRows(q){ q=(q||'').toLowerCase().trim();
   const rows=S.evidence.filter(e=>{ if(!q)return true; return ((e.title||'')+' '+(e.summary||'')+' '+(e.facts||'')+' '+(e.sourceName||'')).toLowerCase().includes(q); }).slice(0,60);
@@ -783,9 +823,6 @@ function suggestHypEv(){ const c=(document.getElementById('hy_claim').value||'')
   if(!scored.length){ el.innerHTML='<div class="empty" style="padding:18px;">가설 문장과 겹치는 자료를 찾지 못했습니다. 직접 검색해 보세요.</div>'; return; }
   el.innerHTML=scored.map(({e,s})=>hypEvRow(e,(e.evidenceRole==='case'?'사례':srcTypeLabel(e.sourceType))+' · 일치 '+s)).join('');
   toast(scored.length+'건 추천 (일치도순)'); }
-function saveHyp(){ const g=id=>(document.getElementById(id).value||'').trim(); const claim=g('hy_claim'); if(!claim){toast('가설 문장을 입력하세요');return;}
-  S.hypotheses.push({id:uid('h-'),claim,termDef:g('hy_def'),scope:g('hy_scope'),falsifier:g('hy_fals'),ruleCandidate:'',status:g('hy_status')||'observation',tags:[],history:[{t:Date.now(),note:'추가됨'}],comparisons:[],axisId:g('hy_axis'),evidenceIds:[...hypPick]});
-  persist(); closeModal(); S.ui.view='hyps'; render(); toast('가설 추가됨'); }
 let clmSearch='';
 function renderClaims(){ const rows=S.claims.slice(0,400);
   const hay=c=>{const e=getEvidence(c.evidenceId);return esc(((c.claimText||'')+' '+(e?e.title:'')).toLowerCase());};
